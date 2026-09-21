@@ -1312,10 +1312,16 @@ class Component extends DCLogic {
     el.muted = true;
     el.loop = true;
     const start = () => el.play().catch(() => {});
-    if (el.readyState >= 2) start();
-    else el.addEventListener('loadeddata', start, { once: true });
+    // iPhone Safari 不會預先載入影片資料，loadeddata 永遠不會觸發；
+    // 改成「投影片顯示時直接呼叫 play()」，play() 本身就會觸發下載。
+    const visible = () => { const s = el.closest('section'); return !s || getComputedStyle(s).visibility !== 'hidden'; };
+    const tryStart = () => { if (visible()) start(); };
+    setTimeout(tryStart, 300);
+    el.addEventListener('loadeddata', tryStart, { once: true });
+    const stage = document.querySelector('deck-stage');
+    if (stage) stage.addEventListener('slidechange', () => setTimeout(tryStart, 60));
     el.addEventListener('pause', () => {
-      if (!el.ended && document.visibilityState === 'visible') start();
+      if (!el.ended && document.visibilityState === 'visible' && visible()) start();
     });
   };
   state = { fs: false };
